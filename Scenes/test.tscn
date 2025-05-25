@@ -1,0 +1,21 @@
+[gd_scene load_steps=2 format=3 uid="uid://ckh4esurqofov"]
+
+[ext_resource type="Script" path="res://Scripts/player.gd" id="1_lc1oi"]
+
+[node name="Test" type="Node2D"]
+
+[node name="CharacterBody2D" type="CharacterBody2D" parent="."]
+script = ExtResource("1_lc1oi")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="CharacterBody2D"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CharacterBody2D"]
+
+[node name="wizard_stay_timer" type="Timer" parent="CharacterBody2D"]
+wait_time = 15.0
+
+[node name="knight_stay_timer" type="Timer" parent="CharacterBody2D"]
+wait_time = 15.0
+
+[connection signal="timeout" from="CharacterBody2D/wizard_stay_timer" to="CharacterBody2D" method="_on_wizard_stay_timer_timeout"]
+[connection signal="timeout" from="CharacterBody2D/knight_stay_timer" to="CharacterBody2D" method="_on_knight_stay_timer_timeout"]
