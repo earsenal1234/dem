@@ -3,26 +3,68 @@ extends CharacterBody2D
 const MAX_SPEED = 300.0
 const ACCELERATION = 1500.0
 const FRICTION = 1000.0
-const AIR_CONTROL = 0.6  # Lower than 1.0 for less sharp air movement
+const AIR_CONTROL = 0.6  
 const GRAVITY = 1200.0
 const JUMP_FORCE = -400.0
 const FALL_MULTIPLIER = 2.2
 const LOW_JUMP_MULTIPLIER = 3.0
 const COYOTE_TIME = 0.15
 const JUMP_BUFFER_TIME = 0.15
+const ROLL_SPEED = 600.0
+const ROLL_DURATION = 0.3
+const ROLL_COOLDOWN = 1.0
+const TELEPORT_DISTANCE = 200.0
+const TELEPORT_COOLDOWN = 1.5
+const TELEPORT_DELAY = 0.2  
 
 var wizard = false
+var teleport_cooldown_timer = 0.0
 var knight = true
 var health = 100
 var coyote_time_left = 0.0
 var jump_buffer_time_left = 0.0
 var mouse_pos
+var is_rolling = false
+var roll_direction = Vector2.ZERO
+var roll_timer = 0.0
+var roll_cooldown_timer = 0.0
+var is_teleporting = false
+var teleport_target_position = Vector2.ZERO
+var teleport_delay_timer = 0.0
+var wiz_atack_charge_pos = 3
 
 @onready var wizard_stay_timer = $wizard_stay_timer
 @onready var knight_stay_timer = $knight_stay_timer
 @onready var knight_hitbox = $knightHitbox
 @onready var wizard_hitbox = $wizardHitbox
+@onready var wizard_hitbox_2 = $wizardHitbox2
+@onready var wizard_hitbox_3 = $wizardHitbox3
 @onready var player = $"."
+
+func _handle_roll(delta: float) -> void:
+	if not knight:
+		return  # Only knights can roll
+
+	if is_rolling:
+		roll_timer -= delta
+		if roll_timer <= 0:
+			is_rolling = false
+			roll_cooldown_timer = ROLL_COOLDOWN
+		else:
+			velocity.x = roll_direction.x * ROLL_SPEED
+		return  # Skip further input if rolling
+
+	if roll_cooldown_timer > 0:
+		roll_cooldown_timer -= delta
+
+	if Input.is_action_just_pressed("roll") and roll_cooldown_timer <= 0 and is_on_floor():
+		is_rolling = true
+		roll_timer = ROLL_DURATION
+		var input_dir = Input.get_axis("ui_left", "ui_right")
+		if input_dir != 0:
+			roll_direction = Vector2(input_dir, 0)
+		else:
+			roll_direction = Vector2(sign(velocity.x), 0)
 
 func _physics_process(delta):
 	#checking if ur a knight or a wizard
@@ -39,8 +81,11 @@ func _physics_process(delta):
 	_handle_timers(delta)
 	_apply_gravity(delta)
 	_handle_jump()
+	_handle_roll(delta) 
 	_handle_movement(delta)
 	move_and_slide()
+	_handle_teleport(delta)
+
 
 func knight_func():
 	if not knight_stay_timer.time_left:
@@ -126,4 +171,27 @@ func attack():
 			knight_hitbox.global_position.x = player.global_position.x + 128
 		knight_hitbox.disabled = true
 	elif wizard:
-		wizard_hitbox.disabled = false
+		if wiz_atack_charge_pos == 3:
+			wizard_hitbox.global_position = mouse_pos
+			wizard_hitbox.disabled = false
+			wiz_atack_charge_pos = 2
+		elif wiz_atack_charge_pos == 2:
+			wizard_hitbox_2.global_position = mouse_pos
+			wizard_hitbox_2.disabled = false
+			wiz_atack_charge_pos = 1
+		elif wiz_atack_charge_pos == 1:
+			wizard_hitbox_3.global_position = mouse_pos
+			wizard_hitbox_3.disabled = false
+			wiz_atack_charge_pos  = 3
+
+func _handle_teleport(delta: float) -> void:
+	if not wizard:
+		return  # Only wizards can teleport
+
+	if teleport_cooldown_timer > 0:
+		teleport_cooldown_timer -= delta
+
+	if Input.is_action_just_pressed("roll") and teleport_cooldown_timer <= 0:
+		var direction = (mouse_pos - global_position).normalized()
+		global_position += direction * TELEPORT_DISTANCE
+		teleport_cooldown_timer = TELEPORT_COOLDOWN
